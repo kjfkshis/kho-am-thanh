@@ -76,11 +76,11 @@
             display: flex;
             gap: 10px;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 10px; /* Giảm margin 1 chút */
         }
 
         #upload-button,
-        .folder-select-btn {
+        .folder-select-btn { /* Dùng chung style cho nút mới */
             background-color: #8be9fd;
             color: #282a36;
             border: none;
@@ -90,18 +90,34 @@
             font-size: 14px;
             cursor: pointer;
             transition: background-color 0.2s ease;
-            flex: 1;
+            flex: 1; /* Chia đều */
+        }
+
+        /* Nút "Tải lên" sẽ có màu khác */
+        #upload-button {
+             background-color: #50fa7b;
         }
 
         #upload-button:hover,
         .folder-select-btn:hover {
-            background-color: #79dce9;
+            opacity: 0.8;
+        }
+        
+        /* Chỗ hiển thị tên file */
+        #file-name-display {
+            font-size: 12px; 
+            color: #f1fa8c; 
+            margin-top: 5px; 
+            height: 1.2em; /* Giữ chiều cao ổn định */
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         #status {
             color: #94a3b8;
             font-size: 12px;
-            margin-top: 10px;
+            margin-top: 5px;
         }
 
         /* Folder Display */
@@ -142,8 +158,9 @@
         .file-item {
             display: flex;
             align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #6272a4;
+            justify-content: space-between; /* Căn chỉnh các phần */
+            padding: 12px 5px; /* Thêm padding ngang */
+            border-bottom: 1px solid #44475a; /* Đổi màu viền */
         }
 
         .file-item:last-child {
@@ -151,21 +168,33 @@
         }
 
         .file-name {
-            flex: 1;
+            flex: 1; /* Chiếm nhiều không gian nhất */
             color: #f8f8f2;
             font-size: 14px;
             margin-right: 15px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            cursor: pointer; /* Cho biết có thể click */
+            text-decoration: underline;
+            color: #8be9fd; /* Màu link */
+        }
+        .file-name:hover {
+            color: #50fa7b;
         }
 
-        .file-duration {
-            color: #94a3b8;
-            font-size: 12px;
-            margin-right: 15px;
-            min-width: 50px;
-            text-align: right;
+        /* Gộp audio và nút vào 1 nhóm */
+        .file-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px; /* Tăng khoảng cách */
+            flex-shrink: 0; /* Không bị co lại */
+        }
+
+        /* Tùy chỉnh trình phát audio */
+        .file-controls audio {
+            height: 40px;
+            max-width: 300px;
         }
 
         .file-actions {
@@ -173,51 +202,31 @@
             gap: 8px;
             align-items: center;
         }
-
-        .play-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background-color: #8be9fd;
+        
+        /* Nút "Sử dụng" - Dùng lại style của bạn */
+        .use-btn {
+            width: 36px; /* Tăng kích thước 1 chút */
+            height: 36px;
+            border-radius: 6px; /* Vuông hơn */
+            background-color: #50fa7b; /* Đổi màu cho nổi bật */
             border: none;
             color: #282a36;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
-            transition: background-color 0.2s ease;
-            padding: 0;
-        }
-
-        .play-btn:hover {
-            background-color: #79dce9;
-        }
-
-        .play-btn.playing {
-            background-color: #50fa7b;
-        }
-
-        .use-btn {
-            width: 32px;
-            height: 32px;
-            border-radius: 4px;
-            background-color: #bd93f9;
-            border: none;
-            color: #f8f8f2;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             font-size: 14px;
-            transition: background-color 0.2s ease;
+            transition: all 0.2s ease;
             padding: 0;
+            font-weight: bold;
         }
 
         .use-btn:hover {
-            background-color: #a78bfa;
+            background-color: #48e06e;
+            transform: scale(1.1);
         }
 
+        /* Thêm icon bằng CSS (Giống file tool của bạn) */
         .use-btn::before {
             content: '📥';
             font-size: 16px;
@@ -243,19 +252,24 @@
 <body>
     <div class="container">
         <div class="header">
-            <h2>Quản lý thư mục âm thanh</h2>
-            <div class="separator"></div>
+            <h2>Quản lý kho âm thanh</h2>
         </div>
 
         <div class="upload-section">
             <h3>Tải âm thanh của bạn lên</h3>
+            
+            <input type="file" id="upload-input" accept="audio/*">
+            
             <div class="upload-button-wrapper">
-                <input type="file" id="upload-input" accept="audio/*">
-                <button id="upload-button">Tải lên</button>
+                <button id="choose-file-btn" class="folder-select-btn" style="flex: 2;">📁 Chọn Tệp...</button>
+                
+                <button id="upload-button" style="flex: 1;">Tải lên</button>
             </div>
+            
+            <div id="file-name-display">Chưa chọn file nào</div>
+            
             <p id="status">Trạng thái: Sẵn sàng</p>
         </div>
-
         <div class="separator"></div>
 
         <div class="file-list-section">
