@@ -1,6 +1,7 @@
 // DÁN 2 "CHÌA KHOÁ" CỦA BẠN VÀO ĐÂY
 const APPWRITE_PROJECT_ID = '6904f537002b8df7dd89';
 const APPWRITE_BUCKET_ID = '6904f5d60014d41970a2';
+const DELETE_PASSWORD = '221504'; // Mật khẩu xóa file
 
 // ----- KHÔNG SỬA PHẦN BÊN DƯỚI -----
 
@@ -10,28 +11,28 @@ const client = new Client();
 client
     .setEndpoint('https://cloud.appwrite.io/v1')
     .setProject(APPWRITE_PROJECT_ID);
-
 const storage = new Storage(client);
 
-// 2. Lấy các phần tử HTML
+// 2. Lấy các phần tử HTML (Đã thêm bộ lọc)
 const uploadInput = document.getElementById('upload-input');
 const chooseFileBtn = document.getElementById('choose-file-btn');
 const uploadButton = document.getElementById('upload-button');
 const statusText = document.getElementById('status');
 const fileListDiv = document.getElementById('file-list');
 const fileNameDisplay = document.getElementById('file-name-display');
+
+// Bộ lọc MỚI
 const searchInput = document.getElementById('search-input');
-const suggestionsBox = document.getElementById('search-suggestions'); // <-- Hộp gợi ý MỚI
+const genderFilter = document.getElementById('filter-gender');
+const countryFilter = document.getElementById('filter-country');
+const sortFilter = document.getElementById('filter-sort');
 
 // 3. Biến toàn cục để lưu trữ danh sách file
 let allAudioFiles = [];
 
-// 4. Xử lý sự kiện nhấn nút "Chọn Tệp"
-chooseFileBtn.addEventListener('click', () => {
-    uploadInput.click();
-});
+// 4. Xử lý Tải lên (Giữ nguyên)
+chooseFileBtn.addEventListener('click', () => uploadInput.click());
 
-// 5. Hiển thị tên file khi đã chọn
 uploadInput.addEventListener('change', () => {
     if (uploadInput.files.length > 0) {
         fileNameDisplay.textContent = uploadInput.files[0].name;
@@ -42,31 +43,21 @@ uploadInput.addEventListener('change', () => {
     }
 });
 
-// 6. Xử lý sự kiện nhấn nút "Tải lên"
 uploadButton.addEventListener('click', () => {
     const file = uploadInput.files[0];
-    if (!file) {
-        statusText.textContent = 'Lỗi: Bạn chưa chọn file!';
-        return;
-    }
+    if (!file) { statusText.textContent = 'Lỗi: Bạn chưa chọn file!'; return; }
 
     statusText.textContent = 'Đang tải lên...';
     uploadButton.disabled = true;
     chooseFileBtn.disabled = true;
 
-    const promise = storage.createFile(
-        APPWRITE_BUCKET_ID,
-        ID.unique(),
-        file
-    );
-
-    promise.then(function (response) {
+    storage.createFile(APPWRITE_BUCKET_ID, ID.unique(), file).then(function (response) {
         statusText.textContent = 'Tải lên thành công!';
         uploadInput.value = '';
         fileNameDisplay.textContent = 'Chưa chọn file nào';
         
-        allAudioFiles.unshift(response); // Thêm file mới vào đầu danh sách
-        renderFiles(allAudioFiles); // Vẽ lại toàn bộ danh sách
+        allAudioFiles.unshift(response); // Thêm file mới vào đầu
+        applyFiltersAndRender(); // Render lại danh sách
         
         chooseFileBtn.disabled = false;
     }, function (error) {
@@ -76,12 +67,65 @@ uploadButton.addEventListener('click', () => {
     });
 });
 
-// 7. HÀM "Vẽ" danh sách file (ĐÃ NÂNG CẤP VỚI ID)
-function renderFiles(filesToRender) {
-    fileListDiv.innerHTML = ''; 
+// 5. HÀM MỚI: Lọc và Sắp xếp (Bộ não chính)
+function applyFiltersAndRender() {
+    // Lấy giá trị từ các bộ lọc
+    const searchTerm = searchInput.value.toLowerCase();
+    const gender = genderFilter.value;
+    const country = countryFilter.value;
+    const sort = sortFilter.value;
+
+    // Bắt đầu lọc
+    let filteredList = [...allAudioFiles];
+
+    // Lọc theo Tìm kiếm
+    if (searchTerm) {
+        filteredList = filteredList.filter(file => 
+            file.name.toLowerCase().includes(searchTerm)
+        );
+    }
+
+    // Lọc theo Giới tính (dựa trên tag [Nam] [Nữ])
+    if (gender !== 'all') {
+        const tag = `[${gender}]`;
+        filteredList = filteredList.filter(file => 
+            file.name.toLowerCase().includes(tag.toLowerCase())
+        );
+    }
+
+    // Lọc theo Quốc gia (dựa trên tag [VN] [US]...)
+    if (country !== 'all') {
+        const tag = `[${country}]`;
+        filteredList = filteredList.filter(file => 
+            file.name.toLowerCase().includes(tag.toLowerCase())
+        );
+    }
+
+    // Sắp xếp
+    if (sort === 'name-asc') {
+        filteredList.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (sort === 'name-desc') {
+        filteredList.sort((a, b) => b.name.localeCompare(a.name));
+    } else {
+        // Mặc định là 'newest' (đã được sắp xếp khi tải)
+        // Nếu dùng sort khác, ta cần sort lại theo $createdAt
+        filteredList.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+    }
+
+    // "Vẽ" kết quả ra giao diện
+    renderCards(filteredList);
+}
+
+// 6. HÀM "VẼ" GIAO DIỆN (Đã thêm Nút Xóa)
+function renderCards(filesToRender) {
+    fileListDiv.innerHTML = ''; // Xóa nội dung cũ
 
     if (filesToRender.length === 0) {
-        fileListDiv.innerHTML = '<div class="empty-state">Chưa có file nào.</div>';
+        if (searchInput.value || genderFilter.value !== 'all' || countryFilter.value !== 'all') {
+            fileListDiv.innerHTML = '<div class="empty-state">Không tìm thấy file nào khớp với bộ lọc.</div>';
+        } else {
+            fileListDiv.innerHTML = '<div class="empty-state">Chưa có file nào.</div>';
+        }
         return;
     }
 
@@ -90,9 +134,7 @@ function renderFiles(filesToRender) {
         
         const card = document.createElement('div');
         card.className = 'file-card';
-        // === NÂNG CẤP QUAN TRỌNG: Thêm ID duy nhất cho mỗi card ===
-        card.id = `file-card-${file.$id}`;
-        // ======================================================
+        card.id = `file-card-${file.$id}`; // Thêm ID để xóa khỏi UI
 
         card.innerHTML = `
             <div class="file-card-header">
@@ -104,100 +146,86 @@ function renderFiles(filesToRender) {
             </div>
             <div class="file-card-footer">
                 <button class="use-btn" data-url="${url}" data-filename="${file.name}">
-                    Sử dụng file này
+                    Sử dụng
+                </button>
+                <button class="delete-btn" data-file-id="${file.$id}" data-file-name="${file.name}">
+                    🗑️ Xóa
                 </button>
             </div>
         `;
-
         fileListDiv.appendChild(card);
-
-        // Gắn sự kiện cho nút "Sử dụng"
-        const useButton = card.querySelector('.use-btn');
-        useButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            window.parent.postMessage({
-                type: 'USE_AUDIO',
-                url: url,
-                fileName: file.name
-            }, 'https://www.minimax.io'); 
-        });
     });
 }
 
-// 8. HÀM MỚI: "Nhảy" (Scroll) đến card và làm nổi bật
-function jumpToCard(fileId) {
-    const targetCard = document.getElementById(`file-card-${fileId}`);
-    if (targetCard) {
-        // Cuộn đến card
-        targetCard.scrollIntoView({
-            behavior: 'smooth', // Cuộn mượt
-            block: 'center'    // Căn card vào giữa màn hình
-        });
+// 7. LẮNG NGHE SỰ KIỆN CHO CÁC BỘ LỌC
+searchInput.addEventListener('input', applyFiltersAndRender);
+genderFilter.addEventListener('change', applyFiltersAndRender);
+countryFilter.addEventListener('change', applyFiltersAndRender);
+sortFilter.addEventListener('change', applyFiltersAndRender);
 
-        // Làm nổi bật card
-        targetCard.classList.add('highlight');
-
-        // Xóa nổi bật sau 2 giây
-        setTimeout(() => {
-            targetCard.classList.remove('highlight');
-        }, 2000);
-    }
-}
-
-// 9. HÀM MỚI: Lắng nghe sự kiện tìm kiếm (ĐÃ THAY ĐỔI HOÀN TOÀN)
-searchInput.addEventListener('input', () => {
-    const searchTerm = searchInput.value.toLowerCase();
-    suggestionsBox.innerHTML = ''; // Xóa gợi ý cũ
-
-    // Nếu không gõ gì, ẩn hộp gợi ý
-    if (searchTerm.length === 0) {
-        suggestionsBox.style.display = 'none';
-        return;
+// 8. LẮNG NGHE SỰ KIỆN CHO NÚT "SỬ DỤNG" VÀ "XÓA" (Event Delegation)
+fileListDiv.addEventListener('click', function(e) {
+    
+    // --- Xử lý Nút "Sử dụng" ---
+    if (e.target && e.target.classList.contains('use-btn')) {
+        const button = e.target;
+        window.parent.postMessage({
+            type: 'USE_AUDIO',
+            url: button.dataset.url,
+            fileName: button.dataset.filename
+        }, 'https://www.minimax.io');
     }
 
-    // Lọc 10 gợi ý hàng đầu
-    const filteredFiles = allAudioFiles.filter(file => 
-        file.name.toLowerCase().includes(searchTerm)
-    ).slice(0, 10); // Giới hạn 10 gợi ý
+    // --- Xử lý Nút "Xóa" ---
+    if (e.target && e.target.classList.contains('delete-btn')) {
+        const button = e.target;
+        const fileId = button.dataset.fileId;
+        const fileName = button.dataset.fileName;
 
-    if (filteredFiles.length > 0) {
-        filteredFiles.forEach(file => {
-            const item = document.createElement('div');
-            item.className = 'suggestion-item';
-            
-            // Làm nổi bật chữ cái khớp
-            const regex = new RegExp(`(${searchTerm})`, 'gi');
-            item.innerHTML = file.name.replace(regex, '<strong>$1</strong>');
-            
-            // Gắn sự kiện click để "nhảy"
-            item.addEventListener('click', () => {
-                jumpToCard(file.$id); // Gọi hàm "nhảy"
-                searchInput.value = ''; // Xóa thanh tìm kiếm
-                suggestionsBox.style.display = 'none'; // Ẩn hộp gợi ý
+        // 1. Hỏi mật khẩu
+        const password = prompt(`Bạn có chắc muốn xóa file "${fileName}"?\n\nNếu chắc, hãy nhập mật khẩu:`);
+        
+        if (password === null) {
+            return; // Người dùng nhấn Hủy
+        }
+
+        if (password === DELETE_PASSWORD) {
+            // 2. Mật khẩu đúng -> Xóa file
+            statusText.textContent = `Đang xóa file ${fileName}...`;
+            button.textContent = '...';
+            button.disabled = true;
+
+            storage.deleteFile(APPWRITE_BUCKET_ID, fileId).then(function (response) {
+                statusText.textContent = `Đã xóa file "${fileName}" thành công!`;
+                
+                // Xóa khỏi mảng data chính
+                allAudioFiles = allAudioFiles.filter(file => file.$id !== fileId);
+                // Render lại danh sách
+                applyFiltersAndRender();
+                
+            }, function (error) {
+                statusText.textContent = `Lỗi khi xóa file: ${error.message}`;
+                button.textContent = '🗑️ Xóa';
+                button.disabled = false;
             });
-            
-            suggestionsBox.appendChild(item);
-        });
-        suggestionsBox.style.display = 'block'; // Hiển thị hộp gợi ý
-    } else {
-        suggestionsBox.style.display = 'none'; // Ẩn nếu không có gợi ý
+
+        } else {
+            // 3. Mật khẩu sai
+            alert('Mật khẩu không đúng. Xóa file thất bại.');
+        }
     }
 });
 
-// 10. HÀM CŨ: Tải danh sách file từ Appwrite
+
+// 9. HÀM TẢI FILE BAN ĐẦU
 function loadFiles() {
     fileListDiv.innerHTML = '<div class="loading">Đang tải danh sách...</div>';
 
-    const promise = storage.listFiles(APPWRITE_BUCKET_ID);
-
-    promise.then(function (response) {
-        const sortedFiles = response.files.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
-        
-        // LƯU VÀO BIẾN TOÀN CỤC
-        allAudioFiles = sortedFiles;
-        
-        // Render ra lần đầu (vẽ toàn bộ)
-        renderFiles(allAudioFiles);
+    storage.listFiles(APPWRITE_BUCKET_ID).then(function (response) {
+        // Sắp xếp mặc định: Mới nhất lên đầu
+        allAudioFiles = response.files.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+        // Render ra lần đầu
+        applyFiltersAndRender();
 
     }, function (error) {
         fileListDiv.innerHTML = '<div class="empty-state" style="color: #f55;">Lỗi khi tải danh sách file.</div>';
@@ -205,12 +233,5 @@ function loadFiles() {
     });
 }
 
-// 11. Tải danh sách file ngay khi mở trang
+// 10. Tải danh sách file ngay khi mở trang
 loadFiles();
-
-// 12. Ẩn hộp gợi ý khi click ra ngoài
-document.addEventListener('click', (e) => {
-    if (!searchInput.contains(e.target)) {
-        suggestionsBox.style.display = 'none';
-    }
-});
