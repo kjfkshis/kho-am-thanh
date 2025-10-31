@@ -20,24 +20,25 @@ const uploadButton = document.getElementById('upload-button');
 const statusText = document.getElementById('status');
 const fileListDiv = document.getElementById('file-list');
 const fileNameDisplay = document.getElementById('file-name-display');
-const searchInput = document.getElementById('search-input'); // <-- Thêm thanh tìm kiếm
+const searchInput = document.getElementById('search-input');
+const suggestionsBox = document.getElementById('search-suggestions'); // <-- Hộp gợi ý MỚI
 
-// 3. Biến toàn cục để lưu trữ danh sách file (giúp tìm kiếm nhanh)
+// 3. Biến toàn cục để lưu trữ danh sách file
 let allAudioFiles = [];
 
 // 4. Xử lý sự kiện nhấn nút "Chọn Tệp"
 chooseFileBtn.addEventListener('click', () => {
-    uploadInput.click(); // Kích hoạt input file ẩn
+    uploadInput.click();
 });
 
 // 5. Hiển thị tên file khi đã chọn
 uploadInput.addEventListener('change', () => {
     if (uploadInput.files.length > 0) {
         fileNameDisplay.textContent = uploadInput.files[0].name;
-        uploadButton.disabled = false; // Bật nút tải lên
+        uploadButton.disabled = false;
     } else {
         fileNameDisplay.textContent = 'Chưa chọn file nào';
-        uploadButton.disabled = true; // Tắt nút tải lên
+        uploadButton.disabled = true;
     }
 });
 
@@ -64,12 +65,10 @@ uploadButton.addEventListener('click', () => {
         uploadInput.value = '';
         fileNameDisplay.textContent = 'Chưa chọn file nào';
         
-        // NÂNG CẤP: Thêm file mới vào danh sách và render lại
         allAudioFiles.unshift(response); // Thêm file mới vào đầu danh sách
-        renderFiles(allAudioFiles); // Vẽ lại danh sách
+        renderFiles(allAudioFiles); // Vẽ lại toàn bộ danh sách
         
         chooseFileBtn.disabled = false;
-        // Nút upload vẫn tắt, đợi chọn file mới
     }, function (error) {
         statusText.textContent = `Lỗi: ${error.message}`;
         uploadButton.disabled = false;
@@ -77,27 +76,23 @@ uploadButton.addEventListener('click', () => {
     });
 });
 
-// 7. HÀM MỚI: "Vẽ" danh sách file ra giao diện
-// (Tách ra từ hàm loadFiles để dùng cho cả tìm kiếm)
+// 7. HÀM "Vẽ" danh sách file (ĐÃ NÂNG CẤP VỚI ID)
 function renderFiles(filesToRender) {
-    fileListDiv.innerHTML = ''; // Xóa nội dung cũ
+    fileListDiv.innerHTML = ''; 
 
     if (filesToRender.length === 0) {
-        // Kiểm tra xem có đang tìm kiếm không
-        if (searchInput.value.length > 0) {
-            fileListDiv.innerHTML = '<div class="empty-state">Không tìm thấy file nào khớp.</div>';
-        } else {
-            fileListDiv.innerHTML = '<div class="empty-state">Chưa có file nào.</div>';
-        }
+        fileListDiv.innerHTML = '<div class="empty-state">Chưa có file nào.</div>';
         return;
     }
 
-    // Tạo các card
     filesToRender.forEach(file => {
         const url = `https://cloud.appwrite.io/v1/storage/buckets/${APPWRITE_BUCKET_ID}/files/${file.$id}/view?project=${APPWRITE_PROJECT_ID}`;
         
         const card = document.createElement('div');
         card.className = 'file-card';
+        // === NÂNG CẤP QUAN TRỌNG: Thêm ID duy nhất cho mỗi card ===
+        card.id = `file-card-${file.$id}`;
+        // ======================================================
 
         card.innerHTML = `
             <div class="file-card-header">
@@ -129,33 +124,79 @@ function renderFiles(filesToRender) {
     });
 }
 
-// 8. HÀM MỚI: Lắng nghe sự kiện tìm kiếm
+// 8. HÀM MỚI: "Nhảy" (Scroll) đến card và làm nổi bật
+function jumpToCard(fileId) {
+    const targetCard = document.getElementById(`file-card-${fileId}`);
+    if (targetCard) {
+        // Cuộn đến card
+        targetCard.scrollIntoView({
+            behavior: 'smooth', // Cuộn mượt
+            block: 'center'    // Căn card vào giữa màn hình
+        });
+
+        // Làm nổi bật card
+        targetCard.classList.add('highlight');
+
+        // Xóa nổi bật sau 2 giây
+        setTimeout(() => {
+            targetCard.classList.remove('highlight');
+        }, 2000);
+    }
+}
+
+// 9. HÀM MỚI: Lắng nghe sự kiện tìm kiếm (ĐÃ THAY ĐỔI HOÀN TOÀN)
 searchInput.addEventListener('input', () => {
     const searchTerm = searchInput.value.toLowerCase();
-    
-    // Lọc từ danh sách file toàn cục (allAudioFiles)
+    suggestionsBox.innerHTML = ''; // Xóa gợi ý cũ
+
+    // Nếu không gõ gì, ẩn hộp gợi ý
+    if (searchTerm.length === 0) {
+        suggestionsBox.style.display = 'none';
+        return;
+    }
+
+    // Lọc 10 gợi ý hàng đầu
     const filteredFiles = allAudioFiles.filter(file => 
         file.name.toLowerCase().includes(searchTerm)
-    );
-    
-    // "Vẽ" lại danh sách đã lọc
-    renderFiles(filteredFiles);
+    ).slice(0, 10); // Giới hạn 10 gợi ý
+
+    if (filteredFiles.length > 0) {
+        filteredFiles.forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'suggestion-item';
+            
+            // Làm nổi bật chữ cái khớp
+            const regex = new RegExp(`(${searchTerm})`, 'gi');
+            item.innerHTML = file.name.replace(regex, '<strong>$1</strong>');
+            
+            // Gắn sự kiện click để "nhảy"
+            item.addEventListener('click', () => {
+                jumpToCard(file.$id); // Gọi hàm "nhảy"
+                searchInput.value = ''; // Xóa thanh tìm kiếm
+                suggestionsBox.style.display = 'none'; // Ẩn hộp gợi ý
+            });
+            
+            suggestionsBox.appendChild(item);
+        });
+        suggestionsBox.style.display = 'block'; // Hiển thị hộp gợi ý
+    } else {
+        suggestionsBox.style.display = 'none'; // Ẩn nếu không có gợi ý
+    }
 });
 
-// 9. HÀM CŨ (ĐÃ SỬA): Tải danh sách file từ Appwrite
+// 10. HÀM CŨ: Tải danh sách file từ Appwrite
 function loadFiles() {
     fileListDiv.innerHTML = '<div class="loading">Đang tải danh sách...</div>';
 
-    const promise = storage.listFiles(APPWRITE_BUCKET_ID); // Lấy danh sách file
+    const promise = storage.listFiles(APPWRITE_BUCKET_ID);
 
     promise.then(function (response) {
-        // Sắp xếp file theo ngày tạo, mới nhất lên đầu
         const sortedFiles = response.files.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
         
         // LƯU VÀO BIẾN TOÀN CỤC
         allAudioFiles = sortedFiles;
         
-        // Render ra lần đầu
+        // Render ra lần đầu (vẽ toàn bộ)
         renderFiles(allAudioFiles);
 
     }, function (error) {
@@ -164,5 +205,12 @@ function loadFiles() {
     });
 }
 
-// 10. Tải danh sách file ngay khi mở trang
+// 11. Tải danh sách file ngay khi mở trang
 loadFiles();
+
+// 12. Ẩn hộp gợi ý khi click ra ngoài
+document.addEventListener('click', (e) => {
+    if (!searchInput.contains(e.target)) {
+        suggestionsBox.style.display = 'none';
+    }
+});
