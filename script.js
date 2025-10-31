@@ -5,7 +5,6 @@ const APPWRITE_BUCKET_ID = '6904f5d60014d41970a2';
 // ----- KHÔNG SỬA PHẦN BÊN DƯỚI -----
 
 // 1. Kết nối với Appwrite
-// Chúng ta không cần import nữa vì đã thêm ở file index.html
 const { Client, Storage, ID } = Appwrite;
 const client = new Client();
 client
@@ -73,9 +72,31 @@ function loadFiles() {
             const audioPlayer = new Audio(url);
             audioPlayer.controls = true;
 
-            fileListDiv.appendChild(link);
-            fileListDiv.appendChild(audioPlayer);
-            fileListDiv.appendChild(document.createElement('br'));
+            // === BẮT ĐẦU NÂNG CẤP (THÊM NÚT "SỬ DỤNG") ===
+            const useButton = document.createElement('button');
+            useButton.textContent = 'Sử dụng file này';
+            useButton.style.cssText = "margin-left: 10px; padding: 5px 8px; cursor: pointer; background-color: #50fa7b; border: none; border-radius: 4px; font-weight: bold;";
+
+            useButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                
+                // Gửi tin nhắn cho cửa sổ cha (tool Tampermonkey)
+                window.parent.postMessage({
+                    type: 'USE_AUDIO',        // Tín hiệu nhận biết
+                    url: url,                 // Đường link file
+                    fileName: file.name       // Tên file
+                }, 'https://www.minimax.io'); // **QUAN TRỌNG: Chỉ gửi cho trang web của tool**
+            });
+            // === KẾT THÚC NÂNG CẤP ===
+
+            // Tạo một hàng để chứa các phần tử
+            const itemContainer = document.createElement('div');
+            itemContainer.style.marginBottom = '10px'; // Thêm khoảng cách
+            itemContainer.appendChild(link);
+            itemContainer.appendChild(audioPlayer);
+            itemContainer.appendChild(useButton); // Thêm nút mới
+
+            fileListDiv.appendChild(itemContainer);
         });
 
     }, function (error) {
