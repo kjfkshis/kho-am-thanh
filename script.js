@@ -13,13 +13,31 @@ client
 
 const storage = new Storage(client);
 
-// 2. Lấy các phần tử HTML
+// 2. Lấy các phần tử HTML (Đã thêm các nút mới)
 const uploadInput = document.getElementById('upload-input');
+const chooseFileBtn = document.getElementById('choose-file-btn');
 const uploadButton = document.getElementById('upload-button');
 const statusText = document.getElementById('status');
 const fileListDiv = document.getElementById('file-list');
+const fileNameDisplay = document.getElementById('file-name-display');
 
-// 3. Xử lý sự kiện nhấn nút Tải lên
+// 3. Xử lý sự kiện nhấn nút "Chọn Tệp" MỚI
+chooseFileBtn.addEventListener('click', () => {
+    uploadInput.click(); // Kích hoạt input file ẩn
+});
+
+// 4. Hiển thị tên file khi đã chọn và bật nút "Tải lên"
+uploadInput.addEventListener('change', () => {
+    if (uploadInput.files.length > 0) {
+        fileNameDisplay.textContent = uploadInput.files[0].name;
+        uploadButton.disabled = false; // Bật nút tải lên
+    } else {
+        fileNameDisplay.textContent = 'Chưa chọn file nào';
+        uploadButton.disabled = true; // Tắt nút tải lên
+    }
+});
+
+// 5. Xử lý sự kiện nhấn nút "Tải lên"
 uploadButton.addEventListener('click', () => {
     const file = uploadInput.files[0];
     if (!file) {
@@ -28,6 +46,8 @@ uploadButton.addEventListener('click', () => {
     }
 
     statusText.textContent = 'Đang tải lên...';
+    uploadButton.disabled = true; // Vô hiệu hóa nút khi đang tải
+    chooseFileBtn.disabled = true;
 
     // Tải file lên Appwrite Storage
     const promise = storage.createFile(
@@ -38,72 +58,80 @@ uploadButton.addEventListener('click', () => {
 
     promise.then(function (response) {
         statusText.textContent = 'Tải lên thành công!';
-        console.log(response); // Xem kết quả
-        loadFiles(); // Tải lại danh sách file
         uploadInput.value = ''; // Xóa file đã chọn
+        fileNameDisplay.textContent = 'Chưa chọn file nào';
+        loadFiles(); // Tải lại danh sách file
+        chooseFileBtn.disabled = false; // Bật lại nút
+        // Nút "Tải lên" vẫn disabled cho đến khi chọn file mới
     }, function (error) {
         statusText.textContent = `Lỗi: ${error.message}`;
-        console.log(error); // Báo lỗi
+        uploadButton.disabled = false; // Bật lại nút
+        chooseFileBtn.disabled = false;
     });
 });
 
-// 4. Hàm tải và hiển thị danh sách file
+// 6. Hàm tải và hiển thị danh sách file (ĐÃ VIẾT LẠI CHO GIAO DIỆN CARD)
 function loadFiles() {
-    fileListDiv.innerHTML = 'Đang tải danh sách...';
+    fileListDiv.innerHTML = '<div class="loading">Đang tải danh sách...</div>';
 
     const promise = storage.listFiles(APPWRITE_BUCKET_ID); // Lấy danh sách file
 
     promise.then(function (response) {
         fileListDiv.innerHTML = ''; // Xóa nội dung cũ
         if (response.files.length === 0) {
-            fileListDiv.innerHTML = 'Chưa có file nào.';
+            fileListDiv.innerHTML = '<div class="empty-state">Chưa có file nào.</div>';
             return;
         }
 
-        response.files.forEach(file => {
+        // Sắp xếp file theo ngày tạo, mới nhất lên đầu
+        const sortedFiles = response.files.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
+
+        sortedFiles.forEach(file => {
             // Lấy URL công khai để nghe/tải
             const url = `https://cloud.appwrite.io/v1/storage/buckets/${APPWRITE_BUCKET_ID}/files/${file.$id}/view?project=${APPWRITE_PROJECT_ID}`;
 
-            const link = document.createElement('a');
-            link.href = url;
-            link.textContent = file.name; // Tên file
-            link.target = '_blank';
+            // Tạo thẻ .file-card
+            const card = document.createElement('div');
+            card.className = 'file-card';
 
-            const audioPlayer = new Audio(url);
-            audioPlayer.controls = true;
+            // Tạo nội dung HTML cho card
+            card.innerHTML = `
+                <div class="file-card-header">
+                    <span class="file-icon">🎵</span>
+                    <span class="file-name" title="${file.name}">${file.name}</span>
+                </div>
+                <div class="file-card-body">
+                    <audio controls preload="none" src="${url}"></audio>
+                </div>
+                <div class="file-card-footer">
+                    <button class="use-btn" data-url="${url}" data-filename="${file.name}">
+                        Sử dụng file này
+                    </button>
+                </div>
+            `;
 
-            // === BẮT ĐẦU NÂNG CẤP (THÊM NÚT "SỬ DỤNG") ===
-            const useButton = document.createElement('button');
-            useButton.textContent = 'Sử dụng file này';
-            useButton.style.cssText = "margin-left: 10px; padding: 5px 8px; cursor: pointer; background-color: #50fa7b; border: none; border-radius: 4px; font-weight: bold;";
+            // Gắn card vào lưới
+            fileListDiv.appendChild(card);
 
+            // QUAN TRỌNG: Thêm listener cho nút "Sử dụng" sau khi đã tạo card
+            const useButton = card.querySelector('.use-btn');
             useButton.addEventListener('click', (e) => {
                 e.preventDefault();
                 
-                // Gửi tin nhắn cho cửa sổ cha (tool Tampermonkey)
+                // Gửi tin nhắn cho cửa sổ cha (tool)
                 window.parent.postMessage({
                     type: 'USE_AUDIO',        // Tín hiệu nhận biết
                     url: url,                 // Đường link file
                     fileName: file.name       // Tên file
-                }, 'https://www.minimax.io'); // **QUAN TRỌNG: Chỉ gửi cho trang web của tool**
+                }, 'https://www.minimax.io'); 
             });
-            // === KẾT THÚC NÂNG CẤP ===
-
-            // Tạo một hàng để chứa các phần tử
-            const itemContainer = document.createElement('div');
-            itemContainer.style.marginBottom = '10px'; // Thêm khoảng cách
-            itemContainer.appendChild(link);
-            itemContainer.appendChild(audioPlayer);
-            itemContainer.appendChild(useButton); // Thêm nút mới
-
-            fileListDiv.appendChild(itemContainer);
         });
 
     }, function (error) {
-        fileListDiv.innerHTML = 'Lỗi khi tải danh sách file.';
+        fileListDiv.innerHTML = '<div class="empty-state" style="color: #f55;">Lỗi khi tải danh sách file.</div>';
         console.log(error);
     });
 }
 
-// 5. Tải danh sách file ngay khi mở trang
+// 7. Tải danh sách file ngay khi mở trang
 loadFiles();
