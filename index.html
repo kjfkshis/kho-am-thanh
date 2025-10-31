@@ -13,9 +13,13 @@
             padding: 0;
             box-sizing: border-box;
         }
+        html {
+            /* Cho phép cuộn mượt */
+            scroll-behavior: smooth;
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #1e1e2c; /* Màu nền tối giống Minimax */
+            background-color: #1e1e2c;
             color: #f0f0f0;
             padding: 20px;
         }
@@ -93,16 +97,17 @@
             margin-top: 5px;
         }
 
-        /* === 2. THANH TÌM KIẾM (MỚI) === */
+        /* === 2. THANH TÌM KIẾM === */
         .search-container {
-            margin-bottom: 25px;
+            margin-bottom: 10px; /* Giảm margin để hộp gợi ý sát hơn */
+            position: relative; /* Cần thiết cho hộp gợi ý */
         }
         #search-input {
             width: 100%;
             padding: 12px 15px;
             font-size: 14px;
-            background-color: #2a2d3e; /* Nền tối */
-            color: #f8f8f2; /* Chữ trắng */
+            background-color: #2a2d3e;
+            color: #f8f8f2;
             border: 1px solid #44475a;
             border-radius: 8px;
             transition: all 0.2s ease;
@@ -116,8 +121,42 @@
             color: #94a3b8;
         }
 
+        /* === 2.5 HỘP GỢI Ý (MỚI) === */
+        .search-suggestions {
+            display: none; /* Ẩn mặc định */
+            position: absolute;
+            width: 100%;
+            background: #3b3d4a;
+            border: 1px solid #44475a;
+            border-top: none; /* Dính liền với thanh tìm kiếm */
+            border-radius: 0 0 8px 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 10;
+        }
+        .suggestion-item {
+            padding: 10px 15px;
+            color: #f8f8f2;
+            font-size: 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #44475a;
+        }
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        .suggestion-item:hover {
+            background-color: #44475a;
+        }
+        /* Style cho chữ khớp (highlight) */
+        .suggestion-item strong {
+            color: #50fa7b; /* Màu xanh lá */
+            font-weight: bold;
+        }
+
+
         /* === 3. DANH SÁCH FILE (GIAO DIỆN CARD) === */
         .file-grid {
+            padding-top: 15px; /* Thêm padding để không bị dính vào thanh tìm kiếm */
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 20px;
@@ -128,8 +167,16 @@
             border: 1px solid #44475a;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             overflow: hidden;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
+        
+        /* === HIỆU ỨNG HIGHLIGHT (MỚI) === */
+        .file-card.highlight {
+            border-color: #50fa7b; /* Viền xanh lá */
+            box-shadow: 0 0 15px rgba(80, 250, 123, 0.5); /* Tỏa sáng */
+            transform: scale(1.03); /* Phóng to 1 chút */
+        }
+
         .file-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
@@ -187,7 +234,6 @@
             text-align: center;
             padding: 40px;
             font-size: 14px;
-            /* Làm cho nó chiếm toàn bộ lưới */
             grid-column: 1 / -1;
         }
     </style>
@@ -207,6 +253,8 @@
 
     <div class="search-container">
         <input type="search" id="search-input" placeholder="🔍 Tìm theo tên file...">
+        <div class="search-suggestions" id="search-suggestions">
+            </div>
     </div>
 
     <div class="file-grid" id="file-list">
