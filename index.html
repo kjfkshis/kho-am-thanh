@@ -2,25 +2,269 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kho Âm Thanh Công Cộng</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        #file-list a { display: block; margin: 10px 0; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #282a36;
+            color: #f8f8f2;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #282a36;
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        /* Header Section */
+        .header {
+            margin-bottom: 20px;
+        }
+
+        .header h2 {
+            color: #bd93f9;
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #6272a4;
+        }
+
+        .header h2::before {
+            content: '📁';
+            font-size: 20px;
+            color: #ffb86c;
+        }
+
+        .separator {
+            height: 1px;
+            background: #6272a4;
+            margin: 15px 0;
+        }
+
+        /* Upload Section */
+        .upload-section {
+            margin-bottom: 25px;
+        }
+
+        .upload-section h3 {
+            color: #f8f8f2;
+            font-size: 14px;
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        #upload-input {
+            display: none;
+        }
+
+        .upload-button-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        #upload-button,
+        .folder-select-btn {
+            background-color: #8be9fd;
+            color: #282a36;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            flex: 1;
+        }
+
+        #upload-button:hover,
+        .folder-select-btn:hover {
+            background-color: #79dce9;
+        }
+
+        #status {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        /* Folder Display */
+        .folder-display {
+            background: #3b3d4a;
+            border-radius: 6px;
+            padding: 12px 15px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .folder-display::before {
+            content: '📁';
+            font-size: 18px;
+            color: #ffb86c;
+        }
+
+        .folder-display .folder-name {
+            color: #f1fa8c;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        /* File List Section */
+        .file-list-section h2 {
+            color: #f8f8f2;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+
+        #file-list {
+            background: #282a36;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #6272a4;
+        }
+
+        .file-item:last-child {
+            border-bottom: none;
+        }
+
+        .file-name {
+            flex: 1;
+            color: #f8f8f2;
+            font-size: 14px;
+            margin-right: 15px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-duration {
+            color: #94a3b8;
+            font-size: 12px;
+            margin-right: 15px;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .file-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .play-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background-color: #8be9fd;
+            border: none;
+            color: #282a36;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: background-color 0.2s ease;
+            padding: 0;
+        }
+
+        .play-btn:hover {
+            background-color: #79dce9;
+        }
+
+        .play-btn.playing {
+            background-color: #50fa7b;
+        }
+
+        .use-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 4px;
+            background-color: #bd93f9;
+            border: none;
+            color: #f8f8f2;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            transition: background-color 0.2s ease;
+            padding: 0;
+        }
+
+        .use-btn:hover {
+            background-color: #a78bfa;
+        }
+
+        .use-btn::before {
+            content: '📥';
+            font-size: 16px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 14px;
+            padding: 40px 20px;
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            color: #8be9fd;
+            padding: 20px;
+        }
     </style>
-
     <script src="https://cdn.jsdelivr.net/npm/appwrite@latest"></script>
-
 </head>
 <body>
-    <h2>Tải âm thanh của bạn lên</h2>
-    <input type="file" id="upload-input" accept="audio/*">
-    <button id="upload-button">Tải lên</button>
-    <p id="status">Trạng thái: Sẵn sàng</p>
-
-    <hr>
-    <h2>Danh sách âm thanh đã tải lên</h2>
-    <div id="file-list">
+    <div class="container">
+        <div class="header">
+            <h2>Quản lý thư mục âm thanh</h2>
+            <div class="separator"></div>
         </div>
+
+        <div class="upload-section">
+            <h3>Tải âm thanh của bạn lên</h3>
+            <div class="upload-button-wrapper">
+                <input type="file" id="upload-input" accept="audio/*">
+                <button id="upload-button">Tải lên</button>
+            </div>
+            <p id="status">Trạng thái: Sẵn sàng</p>
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="file-list-section">
+            <h2>Danh sách âm thanh đã tải lên</h2>
+            <div id="file-list">
+                <div class="loading">Đang tải...</div>
+            </div>
+        </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
