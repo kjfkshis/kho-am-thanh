@@ -14,7 +14,6 @@
             box-sizing: border-box;
         }
         html {
-            /* Cho phép cuộn mượt */
             scroll-behavior: smooth;
         }
         body {
@@ -29,7 +28,7 @@
             background-color: #2a2d3e;
             padding: 20px;
             border-radius: 12px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             border: 1px solid #44475a;
         }
         .upload-container h2 {
@@ -45,51 +44,34 @@
             gap: 12px;
             margin-bottom: 10px;
         }
-        #upload-input {
-            display: none;
+        #upload-input { display: none; }
+        #choose-file-btn, #upload-button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
         #choose-file-btn {
             flex: 2;
-            padding: 12px;
             background-color: #8be9fd;
             color: #282a36;
-            border: none;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        #choose-file-btn:hover {
-            opacity: 0.8;
         }
         #upload-button {
-            flex: 1;
-            padding: 12px;
             background-color: #50fa7b;
             color: #282a36;
-            border: none;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s ease;
         }
-        #upload-button:hover {
-            opacity: 0.8;
-        }
-        #upload-button:disabled {
-            background-color: #6c757d;
-            cursor: not-allowed;
-        }
+        #choose-file-btn:hover, #upload-button:hover { opacity: 0.8; }
+        #upload-button:disabled { background-color: #6c757d; cursor: not-allowed; }
         #file-name-display {
             font-size: 13px; 
             color: #f1fa8c; 
             margin-top: 5px; 
             height: 1.3em;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
         #status {
             font-size: 13px;
@@ -97,12 +79,14 @@
             margin-top: 5px;
         }
 
-        /* === 2. THANH TÌM KIẾM === */
-        .search-container {
-            margin-bottom: 10px; /* Giảm margin để hộp gợi ý sát hơn */
-            position: relative; /* Cần thiết cho hộp gợi ý */
+        /* === 2. KHU VỰC LỌC & TÌM KIẾM (MỚI) === */
+        .controls-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr; /* 3 cột cho bộ lọc */
+            gap: 15px;
+            margin-bottom: 15px;
         }
-        #search-input {
+        .controls-container select, .controls-container input {
             width: 100%;
             padding: 12px 15px;
             font-size: 14px;
@@ -112,51 +96,18 @@
             border-radius: 8px;
             transition: all 0.2s ease;
         }
-        #search-input:focus {
+        .controls-container select:focus, .controls-container input:focus {
             outline: none;
             border-color: #bd93f9;
             box-shadow: 0 0 10px rgba(189, 147, 249, 0.2);
         }
-        #search-input::placeholder {
-            color: #94a3b8;
+        .search-container {
+            /* Thanh tìm kiếm chiếm 3 cột */
+            grid-column: 1 / -1;
         }
-
-        /* === 2.5 HỘP GỢI Ý (MỚI) === */
-        .search-suggestions {
-            display: none; /* Ẩn mặc định */
-            position: absolute;
-            width: 100%;
-            background: #3b3d4a;
-            border: 1px solid #44475a;
-            border-top: none; /* Dính liền với thanh tìm kiếm */
-            border-radius: 0 0 8px 8px;
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 10;
-        }
-        .suggestion-item {
-            padding: 10px 15px;
-            color: #f8f8f2;
-            font-size: 14px;
-            cursor: pointer;
-            border-bottom: 1px solid #44475a;
-        }
-        .suggestion-item:last-child {
-            border-bottom: none;
-        }
-        .suggestion-item:hover {
-            background-color: #44475a;
-        }
-        /* Style cho chữ khớp (highlight) */
-        .suggestion-item strong {
-            color: #50fa7b; /* Màu xanh lá */
-            font-weight: bold;
-        }
-
 
         /* === 3. DANH SÁCH FILE (GIAO DIỆN CARD) === */
         .file-grid {
-            padding-top: 15px; /* Thêm padding để không bị dính vào thanh tìm kiếm */
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 20px;
@@ -167,19 +118,12 @@
             border: 1px solid #44475a;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
             overflow: hidden;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
+            display: flex; /* Dùng flex column để đẩy footer xuống dưới */
+            flex-direction: column;
         }
-        
-        /* === HIỆU ỨNG HIGHLIGHT (MỚI) === */
-        .file-card.highlight {
-            border-color: #50fa7b; /* Viền xanh lá */
-            box-shadow: 0 0 15px rgba(80, 250, 123, 0.5); /* Tỏa sáng */
-            transform: scale(1.03); /* Phóng to 1 chút */
-        }
-
         .file-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
             border-color: #bd93f9;
         }
         .file-card-header {
@@ -190,11 +134,7 @@
             align-items: center;
             gap: 10px;
         }
-        .file-icon {
-            font-size: 20px;
-            color: #ffb86c;
-            flex-shrink: 0;
-        }
+        .file-icon { font-size: 20px; color: #ffb86c; flex-shrink: 0; }
         .file-name {
             font-size: 14px;
             font-weight: 600;
@@ -205,17 +145,18 @@
         }
         .file-card-body {
             padding: 15px;
+            flex-grow: 1; /* Đẩy footer xuống */
         }
-        .file-card-body audio {
-            width: 100%;
-            height: 40px;
-        }
+        .file-card-body audio { width: 100%; height: 40px; }
+        
         .file-card-footer {
             padding: 0 15px 15px 15px;
+            display: flex; /* Cho 2 nút nằm cạnh nhau */
+            gap: 10px;
         }
         .use-btn {
-            width: 100%;
-            padding: 12px;
+            flex: 3; /* Nút "Sử dụng" to hơn */
+            padding: 10px; /* Nhỏ hơn 1 chút */
             background-color: #50fa7b;
             color: #282a36;
             border: none;
@@ -225,10 +166,25 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
-        .use-btn:hover {
+        
+        /* === NÚT XÓA (MỚI) === */
+        .delete-btn {
+            flex: 1; /* Nút "Xóa" nhỏ hơn */
+            padding: 10px;
+            background-color: #ff5555; /* Màu đỏ */
+            color: #f8f8f2;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .use-btn:hover, .delete-btn:hover {
             opacity: 0.8;
             transform: scale(1.02);
         }
+
         .loading, .empty-state {
             color: #94a3b8;
             text-align: center;
@@ -251,10 +207,30 @@
         <div id="status">Trạng thái: Sẵn sàng</div>
     </div>
 
-    <div class="search-container">
-        <input type="search" id="search-input" placeholder="🔍 Tìm theo tên file...">
-        <div class="search-suggestions" id="search-suggestions">
-            </div>
+    <div class="controls-container">
+        <select id="filter-gender">
+            <option value="all">Tất cả giới tính</option>
+            <option value="nam">[Nam]</option>
+            <option value="nu">[Nữ]</option>
+        </select>
+        
+        <select id="filter-country">
+            <option value="all">Tất cả quốc gia</option>
+            <option value="vn">[VN]</option>
+            <option value="us">[US]</option>
+            <option value="jp">[JP]</option>
+            <option value="kr">[KR]</option>
+            </select>
+
+        <select id="filter-sort">
+            <option value="newest">Sắp xếp: Mới nhất</option>
+            <option value="name-asc">Sắp xếp: Tên A-Z</option>
+            <option value="name-desc">Sắp xếp: Tên Z-A</option>
+        </select>
+
+        <div class="search-container">
+            <input type="search" id="search-input" placeholder="🔍 Tìm theo tên file (vẫn lọc, không còn gợi ý)...">
+        </div>
     </div>
 
     <div class="file-grid" id="file-list">
