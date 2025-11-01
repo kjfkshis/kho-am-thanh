@@ -295,7 +295,9 @@ function loadFiles() {
         // Nếu có nhiều hơn, tải tất cả các page còn lại
         console.log('📥 Đang tải thêm các files còn lại...');
         let allFiles = [...firstResponse.files];
-        let loadedCount = firstResponse.files.length;
+        
+        // Cập nhật loading message
+        fileListDiv.innerHTML = `<div class="loading">Đang tải ${allFiles.length}/${totalFiles} files...</div>`;
         
         // Tạo mảng promises để tải tất cả các page còn lại
         const promises = [];
@@ -311,10 +313,17 @@ function loadFiles() {
         // Tải tất cả các page song song (nhanh hơn)
         Promise.all(promises).then(function (responses) {
             responses.forEach(function (response) {
-                allFiles = allFiles.concat(response.files);
+                if (response.files && response.files.length > 0) {
+                    allFiles = allFiles.concat(response.files);
+                }
             });
             
             console.log('✅ Tải tất cả files thành công:', allFiles.length, 'files trên tổng số', totalFiles);
+            
+            if (allFiles.length < totalFiles) {
+                console.warn('⚠️ Cảnh báo: Chỉ tải được', allFiles.length, 'files trên tổng số', totalFiles, 'files');
+            }
+            
             allAudioFiles = allFiles.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
             applyFiltersAndRender();
         }, function (error) {
