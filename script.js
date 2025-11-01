@@ -2,19 +2,19 @@
 const APPWRITE_PROJECT_ID = '6904f537002b8df7dd89';
 const APPWRITE_BUCKET_ID = '6904f5d60014d41970a2';
 const DELETE_PASSWORD = '221504'; // Mật khẩu xóa file
-const MAX_FILE_SIZE_MB = 20; // <-- GIỚI HẠN DUNG LƯỢNG MỚI (20MB)
+const MAX_FILE_SIZE_MB = 20; // Giới hạn dung lượng
 
 // ----- KHÔNG SỬA PHẦN BÊN DƯỚI -----
 
-// 1. Kết nối với Appwrite
-const { Client, Storage, ID } = Appwrite;
+// 1. Kết nối với Appwrite (ĐÃ THÊM PERMISSION VÀ ROLE)
+const { Client, Storage, ID, Permission, Role } = Appwrite;
 const client = new Client();
 client
     .setEndpoint('https://cloud.appwrite.io/v1')
     .setProject(APPWRITE_PROJECT_ID);
 const storage = new Storage(client);
 
-// 2. Lấy các phần tử HTML
+// 2. Lấy các phần tử HTML (Giữ nguyên)
 const uploadInput = document.getElementById('upload-input');
 const chooseFileBtn = document.getElementById('choose-file-btn');
 const uploadButton = document.getElementById('upload-button');
@@ -29,17 +29,16 @@ const genderFilter = document.getElementById('filter-gender');
 const countryFilter = document.getElementById('filter-country');
 const sortFilter = document.getElementById('filter-sort');
 
-// 3. Biến toàn cục
+// 3. Biến toàn cục (Giữ nguyên)
 let allAudioFiles = [];
-let isFileSizeValid = false; // <-- Biến mới để theo dõi dung lượng file
+let isFileSizeValid = false;
 
-// 4. HÀM MỚI: Kiểm tra xem đã sẵn sàng tải lên chưa
+// 4. HÀM: Kiểm tra sẵn sàng tải lên (Giữ nguyên)
 function checkUploadReadiness() {
     const fileSelected = uploadInput.files.length > 0;
     const genderSelected = uploadGender.value !== '';
     const countrySelected = uploadCountry.value !== '';
 
-    // Chỉ bật nút "Tải lên" khi CẢ 4 điều kiện đều đúng
     if (fileSelected && genderSelected && countrySelected && isFileSizeValid) {
         uploadButton.disabled = false;
     } else {
@@ -47,49 +46,41 @@ function checkUploadReadiness() {
     }
 }
 
-// 5. Xử lý Tải lên (ĐÃ NÂNG CẤP VỚI KIỂM TRA DUNG LƯỢNG)
+// 5. Xử lý Tải lên (ĐÃ NÂNG CẤP VỚI KIỂM TRA DUNG LƯỢNG) (Giữ nguyên)
 chooseFileBtn.addEventListener('click', () => uploadInput.click());
 
-// Khi chọn file
 uploadInput.addEventListener('change', () => {
     if (uploadInput.files.length > 0) {
         const file = uploadInput.files[0];
-        const fileSizeMB = file.size / 1024 / 1024; // Tính dung lượng MB
+        const fileSizeMB = file.size / 1024 / 1024;
 
-        // === KIỂM TRA DUNG LƯỢNG (MỚI) ===
         if (fileSizeMB > MAX_FILE_SIZE_MB) {
-            // Lỗi: File quá lớn
             statusText.textContent = `Lỗi: File quá lớn (${fileSizeMB.toFixed(1)}MB). Tối đa ${MAX_FILE_SIZE_MB}MB.`;
             fileNameDisplay.textContent = `Lỗi: ${file.name}`;
-            uploadMetadataDiv.style.display = 'none'; // Ẩn metadata
-            isFileSizeValid = false; // Đánh dấu file KHÔNG hợp lệ
+            uploadMetadataDiv.style.display = 'none';
+            isFileSizeValid = false;
         } else {
-            // Hợp lệ: File OK
             statusText.textContent = 'Trạng thái: Sẵn sàng (chọn giới tính và quốc gia).';
             fileNameDisplay.textContent = file.name;
-            uploadMetadataDiv.style.display = 'grid'; // Hiển thị metadata
-            isFileSizeValid = true; // Đánh dấu file HỢP LỆ
+            uploadMetadataDiv.style.display = 'grid';
+            isFileSizeValid = true;
         }
-        // ====================================
-
     } else {
-        // Không chọn file
         fileNameDisplay.textContent = 'Chưa chọn file nào';
-        uploadMetadataDiv.style.display = 'none'; // Ẩn 2 ô chọn
+        uploadMetadataDiv.style.display = 'none';
         statusText.textContent = 'Trạng thái: Sẵn sàng';
         isFileSizeValid = false;
     }
-    checkUploadReadiness(); // Kiểm tra lại nút "Tải lên"
+    checkUploadReadiness();
 });
 
-// Khi chọn giới tính hoặc quốc gia
 uploadGender.addEventListener('change', checkUploadReadiness);
 uploadCountry.addEventListener('change', checkUploadReadiness);
 
-// Khi bấm nút "Tải lên" (Code này giữ nguyên, vì đã được checkUploadReadiness bảo vệ)
+// === 6. XỬ LÝ NÚT TẢI LÊN (ĐÃ THÊM QUYỀN VĨNH VIỄN) ===
 uploadButton.addEventListener('click', () => {
     const originalFile = uploadInput.files[0];
-    if (!originalFile || !isFileSizeValid) { // Kiểm tra lại
+    if (!originalFile || !isFileSizeValid) {
         statusText.textContent = 'Lỗi: File không hợp lệ hoặc quá lớn.';
         return;
     }
@@ -103,28 +94,43 @@ uploadButton.addEventListener('click', () => {
     uploadButton.disabled = true;
     chooseFileBtn.disabled = true;
 
-    storage.createFile(APPWRITE_BUCKET_ID, ID.unique(), fileToUpload)
-        .then(function (response) {
-            statusText.textContent = 'Tải lên thành công!';
-            uploadInput.value = '';
-            fileNameDisplay.textContent = 'Chưa chọn file nào';
-            uploadMetadataDiv.style.display = 'none';
-            uploadGender.value = '';
-            uploadCountry.value = '';
-            isFileSizeValid = false; // Reset trạng thái
-            
-            allAudioFiles.unshift(response);
-            applyFiltersAndRender();
-            
-            chooseFileBtn.disabled = false;
-        }, function (error) {
-            statusText.textContent = `Lỗi: ${error.message}`;
-            uploadButton.disabled = true; // Giữ nút tắt
-            chooseFileBtn.disabled = false;
-        });
-});
+    // === PHẦN SỬA LỖI QUAN TRỌNG NHẤT ===
+    // Thêm 3 dòng quyền này để file không bị mất sau khi F5
+    const filePermissions = [
+        Permission.read(Role.any()),    // CHO PHÉP "All users" (bất kỳ ai) đọc
+        Permission.update(Role.any()),  // CHO PHÉP "All users" cập nhật
+        Permission.delete(Role.any())   // CHO PHÉP "All users" xóa
+    ];
+    // ===================================
 
-// 6. HÀM LỌC VÀ SẮP XẾP (Giữ nguyên)
+    storage.createFile(
+        APPWRITE_BUCKET_ID,
+        ID.unique(),
+        fileToUpload,
+        filePermissions // <-- Thêm mảng quyền vào đây
+    ).then(function (response) {
+        statusText.textContent = 'Tải lên thành công!';
+        uploadInput.value = '';
+        fileNameDisplay.textContent = 'Chưa chọn file nào';
+        uploadMetadataDiv.style.display = 'none';
+        uploadGender.value = '';
+        uploadCountry.value = '';
+        isFileSizeValid = false;
+        
+        allAudioFiles.unshift(response);
+        applyFiltersAndRender();
+        
+        chooseFileBtn.disabled = false;
+    }, function (error) {
+        statusText.textContent = `Lỗi: ${error.message}`;
+        uploadButton.disabled = true;
+        chooseFileBtn.disabled = false;
+    });
+});
+// === KẾT THÚC SỬA LỖI ===
+
+
+// 7. HÀM LỌC VÀ SẮP XẾP (Giữ nguyên)
 function applyFiltersAndRender() {
     const searchTerm = searchInput.value.toLowerCase();
     const gender = genderFilter.value;
@@ -149,7 +155,6 @@ function applyFiltersAndRender() {
             file.name.toUpperCase().includes(countryTag)
         );
     }
-
     if (sort === 'name-asc') {
         filteredList.sort((a, b) => a.name.localeCompare(b.name));
     } else if (sort === 'name-desc') {
@@ -161,7 +166,7 @@ function applyFiltersAndRender() {
     renderCards(filteredList);
 }
 
-// 7. HÀM "VẼ" GIAO DIỆN (Giữ nguyên)
+// 8. HÀM "VẼ" GIAO DIỆN (Giữ nguyên)
 function renderCards(filesToRender) {
     fileListDiv.innerHTML = ''; 
 
@@ -202,13 +207,13 @@ function renderCards(filesToRender) {
     });
 }
 
-// 8. LẮNG NGHE SỰ KIỆN CHO CÁC BỘ LỌC (Giữ nguyên)
+// 9. LẮNG NGHE SỰ KIỆN CHO CÁC BỘ LỌC (Giữ nguyên)
 searchInput.addEventListener('input', applyFiltersAndRender);
 genderFilter.addEventListener('change', applyFiltersAndRender);
 countryFilter.addEventListener('change', applyFiltersAndRender);
 sortFilter.addEventListener('change', applyFiltersAndRender);
 
-// 9. LẮNG NGHE SỰ KIỆN CHO NÚT "SỬ DỤNG" VÀ "XÓA" (Giữ nguyên)
+// 10. LẮNG NGHE SỰ KIỆN CHO NÚT "SỬ DỤNG" VÀ "XÓA" (Giữ nguyên)
 fileListDiv.addEventListener('click', function(e) {
     const button = e.target.closest('button');
     if (!button) return;
@@ -250,7 +255,8 @@ fileListDiv.addEventListener('click', function(e) {
     }
 });
 
-// 10. HÀM TẢI FILE BAN ĐẦU (Giữ nguyên)
+
+// 11. HÀM TẢI FILE BAN ĐẦU (Giữ nguyên)
 function loadFiles() {
     fileListDiv.innerHTML = '<div class="loading">Đang tải danh sách...</div>';
 
@@ -263,5 +269,5 @@ function loadFiles() {
     });
 }
 
-// 11. Tải danh sách file ngay khi mở trang
+// 12. Tải danh sách file ngay khi mở trang
 loadFiles();
