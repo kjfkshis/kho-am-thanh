@@ -6,8 +6,8 @@ const MAX_FILE_SIZE_MB = 20; // Giới hạn dung lượng
 
 // ----- KHÔNG SỬA PHẦN BÊN DƯỚI -----
 
-// 1. Kết nối với Appwrite ( === SỬA LỖI: Thêm 'Permission' và 'Role' === )
-const { Client, Storage, ID, Permission, Role, Query } = Appwrite;
+// 1. Kết nối với Appwrite ( === SỬA LỖI: Thêm 'Query' === )
+const { Client, Storage, ID, Permission, Role, Query } = Appwrite; 
 const client = new Client();
 client
     .setEndpoint('https://cloud.appwrite.io/v1')
@@ -77,7 +77,7 @@ uploadInput.addEventListener('change', () => {
 uploadGender.addEventListener('change', checkUploadReadiness);
 uploadCountry.addEventListener('change', checkUploadReadiness);
 
-// === 6. XỬ LÝ NÚT TẢI LÊN (ĐÃ THÊM QUYỀN VĨNH VIỄN) ===
+// 6. XỬ LÝ NÚT TẢI LÊN (Giữ nguyên)
 uploadButton.addEventListener('click', () => {
     const originalFile = uploadInput.files[0];
     if (!originalFile || !isFileSizeValid) {
@@ -94,19 +94,17 @@ uploadButton.addEventListener('click', () => {
     uploadButton.disabled = true;
     chooseFileBtn.disabled = true;
 
-    // === SỬA LỖI QUAN TRỌNG NHẤT: Thêm quyền khi tạo file ===
     const filePermissions = [
-        Permission.read(Role.any()),    // "any()" = "All users" (Bất kỳ ai)
-        Permission.update(Role.any()),  // Cho phép "All users" cập nhật (quan trọng cho Xóa)
-        Permission.delete(Role.any())   // Cho phép "All users" xóa
+        Permission.read(Role.any()),
+        Permission.update(Role.any()),
+        Permission.delete(Role.any())
     ];
-    // ===================================================
 
     storage.createFile(
         APPWRITE_BUCKET_ID,
         ID.unique(),
         fileToUpload,
-        filePermissions // <-- Thêm mảng quyền vào đây
+        filePermissions
     ).then(function (response) {
         statusText.textContent = 'Tải lên thành công!';
         uploadInput.value = '';
@@ -126,8 +124,6 @@ uploadButton.addEventListener('click', () => {
         chooseFileBtn.disabled = false;
     });
 });
-// === KẾT THÚC SỬA LỖI ===
-
 
 // 7. HÀM LỌC VÀ SẮP XẾP (Giữ nguyên)
 function applyFiltersAndRender() {
@@ -185,26 +181,13 @@ function renderCards(filesToRender) {
         card.className = 'file-card';
         card.id = `file-card-${file.$id}`;
 
-        const audioElement = document.createElement('audio');
-        audioElement.controls = true;
-        audioElement.preload = 'none';
-        audioElement.src = url;
-        
-        // Thêm xử lý lỗi cho audio element
-        audioElement.addEventListener('error', function(e) {
-            console.error('❌ Lỗi khi tải audio:', file.name, url, e);
-        });
-        
-        audioElement.addEventListener('loadeddata', function() {
-            console.log('✅ Audio đã tải:', file.name);
-        });
-
         card.innerHTML = `
             <div class="file-card-header">
                 <span class="file-icon">🎵</span>
                 <span class="file-name" title="${file.name}">${file.name}</span>
             </div>
             <div class="file-card-body">
+                <audio controls preload="none" src="${url}"></audio>
             </div>
             <div class="file-card-footer">
                 <button class="use-btn" data-url="${url}" data-filename="${file.name}">
@@ -215,11 +198,6 @@ function renderCards(filesToRender) {
                 </button>
             </div>
         `;
-        
-        // Thêm audio element vào card
-        const cardBody = card.querySelector('.file-card-body');
-        cardBody.appendChild(audioElement);
-        
         fileListDiv.appendChild(card);
     });
 }
@@ -273,32 +251,23 @@ fileListDiv.addEventListener('click', function(e) {
 });
 
 
-// 11. HÀM TẢI FILE BAN ĐẦU (SỬA: Thêm Query để lấy TẤT CẢ files)
+// 11. HÀM TẢI FILE BAN ĐẦU ( === SỬA LỖI: Thêm Query.limit(1000) === )
 function loadFiles() {
     fileListDiv.innerHTML = '<div class="loading">Đang tải danh sách...</div>';
 
-    // === SỬA LỖI QUAN TRỌNG: Thêm Query.limit(200) để lấy TẤT CẢ files ===
-    // Mặc định Appwrite chỉ trả về 25 files, với 61 files cần tăng limit
-    storage.listFiles(APPWRITE_BUCKET_ID, [Query.limit(200)]).then(function (response) {
-        console.log('✅ Tải danh sách file thành công:', response.files.length, 'files trên tổng số', response.total);
-        
-        // Kiểm tra xem có đủ files không
-        if (response.total > response.files.length) {
-            console.warn('⚠️ Có', response.total, 'files nhưng chỉ tải được', response.files.length, 'files. Cần tăng limit hoặc dùng pagination.');
-        }
-        
+    // Thêm Query.limit(1000) để lấy tối đa 1000 file (thay vì 25)
+    storage.listFiles(
+        APPWRITE_BUCKET_ID,
+        [
+            Query.limit(1000) // Yêu cầu tối đa 1000 file
+        ]
+    ).then(function (response) {
+        console.log(`Tải thành công: ${response.files.length} file`); // Thêm log
         allAudioFiles = response.files.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
         applyFiltersAndRender();
     }, function (error) {
-        console.error('❌ Lỗi khi tải danh sách file:', error);
-        let errorMessage = 'Lỗi khi tải danh sách file.';
-        if (error.message) {
-            errorMessage += '<br>Chi tiết: ' + error.message;
-        }
-        if (error.type === 'general_cors') {
-            errorMessage += '<br><br>⚠️ Lỗi CORS: Cần thêm domain GitHub Pages vào CORS settings trong Appwrite Console.';
-        }
-        fileListDiv.innerHTML = '<div class="empty-state" style="color: #f55;">' + errorMessage + '</div>';
+        fileListDiv.innerHTML = '<div class="empty-state" style="color: #f55;">Lỗi khi tải danh sách file.</div>';
+        console.log(error);
     });
 }
 
