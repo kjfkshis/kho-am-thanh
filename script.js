@@ -185,13 +185,26 @@ function renderCards(filesToRender) {
         card.className = 'file-card';
         card.id = `file-card-${file.$id}`;
 
+        const audioElement = document.createElement('audio');
+        audioElement.controls = true;
+        audioElement.preload = 'none';
+        audioElement.src = url;
+        
+        // Thêm xử lý lỗi cho audio element
+        audioElement.addEventListener('error', function(e) {
+            console.error('❌ Lỗi khi tải audio:', file.name, url, e);
+        });
+        
+        audioElement.addEventListener('loadeddata', function() {
+            console.log('✅ Audio đã tải:', file.name);
+        });
+
         card.innerHTML = `
             <div class="file-card-header">
                 <span class="file-icon">🎵</span>
                 <span class="file-name" title="${file.name}">${file.name}</span>
             </div>
             <div class="file-card-body">
-                <audio controls preload="none" src="${url}"></audio>
             </div>
             <div class="file-card-footer">
                 <button class="use-btn" data-url="${url}" data-filename="${file.name}">
@@ -202,6 +215,11 @@ function renderCards(filesToRender) {
                 </button>
             </div>
         `;
+        
+        // Thêm audio element vào card
+        const cardBody = card.querySelector('.file-card-body');
+        cardBody.appendChild(audioElement);
+        
         fileListDiv.appendChild(card);
     });
 }
@@ -260,11 +278,19 @@ function loadFiles() {
     fileListDiv.innerHTML = '<div class="loading">Đang tải danh sách...</div>';
 
     storage.listFiles(APPWRITE_BUCKET_ID).then(function (response) {
+        console.log('✅ Tải danh sách file thành công:', response.files.length, 'files');
         allAudioFiles = response.files.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
         applyFiltersAndRender();
     }, function (error) {
-        fileListDiv.innerHTML = '<div class="empty-state" style="color: #f55;">Lỗi khi tải danh sách file.</div>';
-        console.log(error);
+        console.error('❌ Lỗi khi tải danh sách file:', error);
+        let errorMessage = 'Lỗi khi tải danh sách file.';
+        if (error.message) {
+            errorMessage += '<br>Chi tiết: ' + error.message;
+        }
+        if (error.type === 'general_cors') {
+            errorMessage += '<br><br>⚠️ Lỗi CORS: Cần thêm domain GitHub Pages vào CORS settings trong Appwrite Console.';
+        }
+        fileListDiv.innerHTML = '<div class="empty-state" style="color: #f55;">' + errorMessage + '</div>';
     });
 }
 
