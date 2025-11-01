@@ -6,7 +6,7 @@ const MAX_FILE_SIZE_MB = 20; // Giới hạn dung lượng
 
 // ----- KHÔNG SỬA PHẦN BÊN DƯỚI -----
 
-// 1. Kết nối với Appwrite (ĐÃ THÊM PERMISSION VÀ ROLE)
+// 1. Kết nối với Appwrite ( === SỬA LỖI: Thêm 'Permission' và 'Role' === )
 const { Client, Storage, ID, Permission, Role } = Appwrite;
 const client = new Client();
 client
@@ -31,7 +31,7 @@ const sortFilter = document.getElementById('filter-sort');
 
 // 3. Biến toàn cục (Giữ nguyên)
 let allAudioFiles = [];
-let isFileSizeValid = false;
+let isFileSizeValid = false; 
 
 // 4. HÀM: Kiểm tra sẵn sàng tải lên (Giữ nguyên)
 function checkUploadReadiness() {
@@ -46,7 +46,7 @@ function checkUploadReadiness() {
     }
 }
 
-// 5. Xử lý Tải lên (ĐÃ NÂNG CẤP VỚI KIỂM TRA DUNG LƯỢNG) (Giữ nguyên)
+// 5. Xử lý Tải lên (Giữ nguyên phần kiểm tra dung lượng)
 chooseFileBtn.addEventListener('click', () => uploadInput.click());
 
 uploadInput.addEventListener('change', () => {
@@ -94,14 +94,13 @@ uploadButton.addEventListener('click', () => {
     uploadButton.disabled = true;
     chooseFileBtn.disabled = true;
 
-    // === PHẦN SỬA LỖI QUAN TRỌNG NHẤT ===
-    // Thêm 3 dòng quyền này để file không bị mất sau khi F5
+    // === SỬA LỖI QUAN TRỌNG NHẤT: Thêm quyền khi tạo file ===
     const filePermissions = [
-        Permission.read(Role.any()),    // CHO PHÉP "All users" (bất kỳ ai) đọc
-        Permission.update(Role.any()),  // CHO PHÉP "All users" cập nhật
-        Permission.delete(Role.any())   // CHO PHÉP "All users" xóa
+        Permission.read(Role.any()),    // "any()" = "All users" (Bất kỳ ai)
+        Permission.update(Role.any()),  // Cho phép "All users" cập nhật (quan trọng cho Xóa)
+        Permission.delete(Role.any())   // Cho phép "All users" xóa
     ];
-    // ===================================
+    // ===================================================
 
     storage.createFile(
         APPWRITE_BUCKET_ID,
@@ -122,7 +121,7 @@ uploadButton.addEventListener('click', () => {
         
         chooseFileBtn.disabled = false;
     }, function (error) {
-        statusText.textContent = `Lỗi: ${error.message}`;
+        statusText.textContent = `Lỗi: ${error.message} (File có thể chưa được cấp quyền)`;
         uploadButton.disabled = true;
         chooseFileBtn.disabled = false;
     });
