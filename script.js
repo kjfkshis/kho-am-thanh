@@ -7,7 +7,7 @@ const MAX_FILE_SIZE_MB = 20; // Giới hạn dung lượng
 // ----- KHÔNG SỬA PHẦN BÊN DƯỚI -----
 
 // 1. Kết nối với Appwrite ( === SỬA LỖI: Thêm 'Permission' và 'Role' === )
-const { Client, Storage, ID, Permission, Role } = Appwrite;
+const { Client, Storage, ID, Permission, Role, Query } = Appwrite;
 const client = new Client();
 client
     .setEndpoint('https://cloud.appwrite.io/v1')
@@ -273,12 +273,20 @@ fileListDiv.addEventListener('click', function(e) {
 });
 
 
-// 11. HÀM TẢI FILE BAN ĐẦU (Giữ nguyên)
+// 11. HÀM TẢI FILE BAN ĐẦU (SỬA: Thêm Query để lấy TẤT CẢ files)
 function loadFiles() {
     fileListDiv.innerHTML = '<div class="loading">Đang tải danh sách...</div>';
 
-    storage.listFiles(APPWRITE_BUCKET_ID).then(function (response) {
-        console.log('✅ Tải danh sách file thành công:', response.files.length, 'files');
+    // === SỬA LỖI QUAN TRỌNG: Thêm Query.limit(200) để lấy TẤT CẢ files ===
+    // Mặc định Appwrite chỉ trả về 25 files, với 61 files cần tăng limit
+    storage.listFiles(APPWRITE_BUCKET_ID, [Query.limit(200)]).then(function (response) {
+        console.log('✅ Tải danh sách file thành công:', response.files.length, 'files trên tổng số', response.total);
+        
+        // Kiểm tra xem có đủ files không
+        if (response.total > response.files.length) {
+            console.warn('⚠️ Có', response.total, 'files nhưng chỉ tải được', response.files.length, 'files. Cần tăng limit hoặc dùng pagination.');
+        }
+        
         allAudioFiles = response.files.sort((a, b) => new Date(b.$createdAt) - new Date(a.$createdAt));
         applyFiltersAndRender();
     }, function (error) {
