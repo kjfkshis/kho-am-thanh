@@ -199,6 +199,37 @@
             font-size: 14px;
             grid-column: 1 / -1;
         }
+        #check-invalid-btn:hover {
+            opacity: 0.8;
+            transform: scale(1.02);
+        }
+        #check-invalid-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .invalid-file-card {
+            border-color: #ff5555 !important;
+        }
+        .invalid-file-card .file-name {
+            color: #ff5555 !important;
+        }
+        .duration-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        .duration-short {
+            background-color: #ff5555;
+            color: #fff;
+        }
+        .duration-long {
+            background-color: #ffb86c;
+            color: #282a36;
+        }
     </style>
 </head>
 <body>
@@ -326,6 +357,12 @@
 
         <div class="search-container">
             <input type="search" id="search-input" placeholder="🔍 Tìm theo tên file...">
+        </div>
+        
+        <div style="grid-column: 1 / -1; margin-top: 10px;">
+            <button id="check-invalid-btn" style="width: 100%; padding: 12px; background-color: #ff5555; color: #f8f8f2; border: none; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; transition: all 0.2s ease;">
+                🔍 Kiểm tra voice không hợp lệ
+            </button>
         </div>
     </div>
 
