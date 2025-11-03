@@ -28,25 +28,27 @@ const searchInput = document.getElementById('search-input');
 const genderFilter = document.getElementById('filter-gender');
 const countryFilter = document.getElementById('filter-country');
 const sortFilter = document.getElementById('filter-sort');
+const checkInvalidBtn = document.getElementById('check-invalid-btn');
 
 // 3. Biến toàn cục (Giữ nguyên)
 let allAudioFiles = [];
-let isFileSizeValid = false; 
+let isFileSizeValid = false;
+let isDurationValid = false; // Kiểm tra độ dài âm thanh (20-60 giây) 
 
-// 4. HÀM: Kiểm tra sẵn sàng tải lên (Giữ nguyên)
+// 4. HÀM: Kiểm tra sẵn sàng tải lên
 function checkUploadReadiness() {
     const fileSelected = uploadInput.files.length > 0;
     const genderSelected = uploadGender.value !== '';
     const countrySelected = uploadCountry.value !== '';
 
-    if (fileSelected && genderSelected && countrySelected && isFileSizeValid) {
+    if (fileSelected && genderSelected && countrySelected && isFileSizeValid && isDurationValid) {
         uploadButton.disabled = false;
     } else {
         uploadButton.disabled = true;
     }
 }
 
-// 5. Xử lý Tải lên (Giữ nguyên phần kiểm tra dung lượng)
+// 5. Xử lý Tải lên (Kiểm tra dung lượng và độ dài âm thanh)
 chooseFileBtn.addEventListener('click', () => uploadInput.click());
 
 uploadInput.addEventListener('change', () => {
@@ -54,22 +56,55 @@ uploadInput.addEventListener('change', () => {
         const file = uploadInput.files[0];
         const fileSizeMB = file.size / 1024 / 1024;
 
+        // Kiểm tra dung lượng
         if (fileSizeMB > MAX_FILE_SIZE_MB) {
             statusText.textContent = `Lỗi: File quá lớn (${fileSizeMB.toFixed(1)}MB). Tối đa ${MAX_FILE_SIZE_MB}MB.`;
             fileNameDisplay.textContent = `Lỗi: ${file.name}`;
             uploadMetadataDiv.style.display = 'none';
             isFileSizeValid = false;
+            isDurationValid = false;
         } else {
-            statusText.textContent = 'Trạng thái: Sẵn sàng (chọn giới tính và quốc gia).';
-            fileNameDisplay.textContent = file.name;
-            uploadMetadataDiv.style.display = 'grid';
+            // Kiểm tra độ dài âm thanh (20-60 giây)
+            const audio = new Audio();
+            const fileUrl = URL.createObjectURL(file);
+            audio.src = fileUrl;
+
+            audio.addEventListener('loadedmetadata', () => {
+                const duration = audio.duration;
+                URL.revokeObjectURL(fileUrl); // Giải phóng bộ nhớ
+
+                if (duration < 20 || duration > 60) {
+                    statusText.textContent = `Lỗi: Độ dài âm thanh không hợp lệ (${duration.toFixed(1)} giây). Chỉ chấp nhận file từ 20-60 giây.`;
+                    fileNameDisplay.textContent = `Lỗi: ${file.name}`;
+                    uploadMetadataDiv.style.display = 'none';
+                    isDurationValid = false;
+                } else {
+                    statusText.textContent = `Trạng thái: Sẵn sàng (${duration.toFixed(1)} giây). Chọn giới tính và quốc gia.`;
+                    fileNameDisplay.textContent = file.name;
+                    uploadMetadataDiv.style.display = 'grid';
+                    isDurationValid = true;
+                }
+                checkUploadReadiness();
+            });
+
+            audio.addEventListener('error', () => {
+                URL.revokeObjectURL(fileUrl);
+                statusText.textContent = 'Lỗi: Không thể đọc file âm thanh. Vui lòng chọn file hợp lệ.';
+                fileNameDisplay.textContent = `Lỗi: ${file.name}`;
+                uploadMetadataDiv.style.display = 'none';
+                isDurationValid = false;
+                checkUploadReadiness();
+            });
+
             isFileSizeValid = true;
+            // isDurationValid sẽ được set trong loadedmetadata event
         }
     } else {
         fileNameDisplay.textContent = 'Chưa chọn file nào';
         uploadMetadataDiv.style.display = 'none';
         statusText.textContent = 'Trạng thái: Sẵn sàng';
         isFileSizeValid = false;
+        isDurationValid = false;
     }
     checkUploadReadiness();
 });
@@ -80,14 +115,22 @@ uploadCountry.addEventListener('change', checkUploadReadiness);
 // === 6. XỬ LÝ NÚT TẢI LÊN (ĐÃ THÊM QUYỀN VĨNH VIỄN) ===
 uploadButton.addEventListener('click', () => {
     const originalFile = uploadInput.files[0];
-    if (!originalFile || !isFileSizeValid) {
-        statusText.textContent = 'Lỗi: File không hợp lệ hoặc quá lớn.';
+    if (!originalFile || !isFileSizeValid || !isDurationValid) {
+        statusText.textContent = 'Lỗi: File không hợp lệ, quá lớn hoặc độ dài không đúng.';
         return;
     }
 
     const genderTag = uploadGender.value;
     const countryTag = `[${uploadCountry.value}]`;
     const newFileName = `${genderTag} ${countryTag} ${originalFile.name}`;
+    
+    // Kiểm tra trùng tên
+    const duplicateFile = allAudioFiles.find(file => file.name === newFileName);
+    if (duplicateFile) {
+        statusText.textContent = `Lỗi: Tên file "${newFileName}" đã tồn tại. Vui lòng đổi tên file hoặc chọn file khác.`;
+        return;
+    }
+    
     const fileToUpload = new File([originalFile], newFileName, { type: originalFile.type });
 
     statusText.textContent = `Đang tải lên file: ${newFileName}...`;
@@ -115,6 +158,7 @@ uploadButton.addEventListener('click', () => {
         uploadGender.value = '';
         uploadCountry.value = '';
         isFileSizeValid = false;
+        isDurationValid = false;
         
         allAudioFiles.unshift(response);
         applyFiltersAndRender();
@@ -347,5 +391,144 @@ function loadFiles() {
     });
 }
 
-// 12. Tải danh sách file ngay khi mở trang
+// 12. HÀM KIỂM TRA VOICE KHÔNG HỢP LỆ
+async function checkInvalidVoices() {
+    if (allAudioFiles.length === 0) {
+        statusText.textContent = 'Không có file nào để kiểm tra.';
+        return;
+    }
+
+    checkInvalidBtn.disabled = true;
+    checkInvalidBtn.textContent = 'Đang kiểm tra...';
+    statusText.textContent = `Đang kiểm tra ${allAudioFiles.length} file...`;
+    
+    const invalidFiles = [];
+    const APPWRITE_BUCKET_ID_VAR = APPWRITE_BUCKET_ID; // Lưu để dùng trong Promise
+    
+    // Tạo các promise để kiểm tra từng file
+    const checkPromises = allAudioFiles.map((file, index) => {
+        return new Promise((resolve) => {
+            const url = `https://cloud.appwrite.io/v1/storage/buckets/${APPWRITE_BUCKET_ID_VAR}/files/${file.$id}/view?project=${APPWRITE_PROJECT_ID}`;
+            const audio = new Audio();
+            
+            // Timeout sau 10 giây nếu không load được
+            const timeout = setTimeout(() => {
+                audio.src = '';
+                resolve({
+                    file: file,
+                    duration: null,
+                    error: true
+                });
+            }, 10000);
+            
+            audio.addEventListener('loadedmetadata', () => {
+                clearTimeout(timeout);
+                const duration = audio.duration;
+                audio.src = ''; // Giải phóng
+                
+                if (duration < 20 || duration > 60 || isNaN(duration)) {
+                    resolve({
+                        file: file,
+                        duration: duration,
+                        error: false
+                    });
+                } else {
+                    resolve(null); // File hợp lệ
+                }
+            });
+            
+            audio.addEventListener('error', () => {
+                clearTimeout(timeout);
+                audio.src = '';
+                resolve({
+                    file: file,
+                    duration: null,
+                    error: true
+                });
+            });
+            
+            audio.src = url;
+        });
+    });
+    
+    // Chờ tất cả các promise hoàn thành
+    const results = await Promise.all(checkPromises);
+    
+    // Lọc các file không hợp lệ
+    results.forEach(result => {
+        if (result !== null) {
+            invalidFiles.push(result);
+        }
+    });
+    
+    checkInvalidBtn.disabled = false;
+    checkInvalidBtn.textContent = '🔍 Kiểm tra voice không hợp lệ';
+    
+    if (invalidFiles.length === 0) {
+        statusText.textContent = `✅ Tất cả ${allAudioFiles.length} file đều hợp lệ (20-60 giây).`;
+        // Khôi phục lại danh sách bình thường
+        applyFiltersAndRender();
+    } else {
+        statusText.textContent = `⚠️ Tìm thấy ${invalidFiles.length} file không hợp lệ.`;
+        // Hiển thị danh sách file không hợp lệ
+        renderInvalidFiles(invalidFiles);
+    }
+}
+
+// HÀM HIỂN THỊ DANH SÁCH FILE KHÔNG HỢP LỆ
+function renderInvalidFiles(invalidFiles) {
+    fileListDiv.innerHTML = '';
+    
+    invalidFiles.forEach(result => {
+        const file = result.file;
+        const url = `https://cloud.appwrite.io/v1/storage/buckets/${APPWRITE_BUCKET_ID}/files/${file.$id}/view?project=${APPWRITE_PROJECT_ID}`;
+        
+        const card = document.createElement('div');
+        card.className = 'file-card invalid-file-card';
+        card.id = `file-card-${file.$id}`;
+        
+        let durationText = '';
+        if (result.error) {
+            durationText = '<span class="duration-badge duration-short">Lỗi đọc file</span>';
+        } else if (result.duration !== null) {
+            if (result.duration < 20) {
+                durationText = `<span class="duration-badge duration-short">${result.duration.toFixed(1)}s (< 20s)</span>`;
+            } else if (result.duration > 60) {
+                durationText = `<span class="duration-badge duration-long">${result.duration.toFixed(1)}s (> 60s)</span>`;
+            }
+        }
+        
+        const audioElement = document.createElement('audio');
+        audioElement.controls = true;
+        audioElement.preload = 'none';
+        audioElement.src = url;
+        
+        card.innerHTML = `
+            <div class="file-card-header">
+                <span class="file-icon">⚠️</span>
+                <span class="file-name" title="${file.name}">${file.name}${durationText}</span>
+            </div>
+            <div class="file-card-body">
+            </div>
+            <div class="file-card-footer">
+                <button class="use-btn" data-url="${url}" data-filename="${file.name}">
+                    Sử dụng
+                </button>
+                <button class="delete-btn" data-file-id="${file.$id}" data-file-name="${file.name}">
+                    🗑️ Xóa
+                </button>
+            </div>
+        `;
+        
+        const cardBody = card.querySelector('.file-card-body');
+        cardBody.appendChild(audioElement);
+        
+        fileListDiv.appendChild(card);
+    });
+}
+
+// 13. LẮNG NGHE SỰ KIỆN CHO NÚT KIỂM TRA
+checkInvalidBtn.addEventListener('click', checkInvalidVoices);
+
+// 14. Tải danh sách file ngay khi mở trang
 loadFiles();
