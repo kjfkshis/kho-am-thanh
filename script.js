@@ -56,6 +56,19 @@ uploadInput.addEventListener('change', () => {
         const file = uploadInput.files[0];
         const fileSizeMB = file.size / 1024 / 1024;
 
+        // Kiểm tra định dạng file - chỉ cho phép MP3
+        const fileName = file.name.toLowerCase();
+        const isMP3 = fileName.endsWith('.mp3') || file.type === 'audio/mpeg' || file.type === 'audio/mp3';
+        if (!isMP3) {
+            statusText.textContent = 'Lỗi: Chỉ cho phép upload file MP3.';
+            fileNameDisplay.textContent = `Lỗi: ${file.name}`;
+            uploadMetadataDiv.style.display = 'none';
+            isFileSizeValid = false;
+            isDurationValid = false;
+            checkUploadReadiness();
+            return;
+        }
+
         // Kiểm tra dung lượng
         if (fileSizeMB > MAX_FILE_SIZE_MB) {
             statusText.textContent = `Lỗi: File quá lớn (${fileSizeMB.toFixed(1)}MB). Tối đa ${MAX_FILE_SIZE_MB}MB.`;
@@ -243,9 +256,18 @@ function renderCards(filesToRender) {
             console.log('✅ Audio đã tải:', file.name);
         });
 
+        // Xác định giới tính và ảnh tương ứng
+        let genderImage = '🎵'; // Mặc định
+        const fileNameLower = file.name.toLowerCase();
+        if (fileNameLower.includes('[nam]') || fileNameLower.startsWith('nam ')) {
+            genderImage = '👨'; // Ảnh nam
+        } else if (fileNameLower.includes('[nữ]') || fileNameLower.startsWith('nữ ') || fileNameLower.startsWith('nu ')) {
+            genderImage = '👩'; // Ảnh nữ
+        }
+
         card.innerHTML = `
             <div class="file-card-header">
-                <span class="file-icon">🎵</span>
+                <span class="file-icon">${genderImage}</span>
                 <span class="file-name" title="${file.name}">${file.name}</span>
             </div>
             <div class="file-card-body">
@@ -291,28 +313,20 @@ fileListDiv.addEventListener('click', function(e) {
         const fileId = button.dataset.fileId;
         const fileName = button.dataset.fileName;
 
-        const password = prompt(`Bạn có chắc muốn xóa file "${fileName}"?\n\nNếu chắc, hãy nhập mật khẩu:`);
-        
-        if (password === null) return; // Hủy
+        // Xóa không cần xác nhận mật khẩu
+        statusText.textContent = `Đang xóa file ${fileName}...`;
+        button.textContent = '...';
+        button.disabled = true;
 
-        if (password === DELETE_PASSWORD) {
-            statusText.textContent = `Đang xóa file ${fileName}...`;
-            button.textContent = '...';
-            button.disabled = true;
-
-            storage.deleteFile(APPWRITE_BUCKET_ID, fileId).then(function (response) {
-                statusText.textContent = `Đã xóa file "${fileName}" thành công!`;
-                allAudioFiles = allAudioFiles.filter(file => file.$id !== fileId);
-                applyFiltersAndRender();
-            }, function (error) {
-                statusText.textContent = `Lỗi khi xóa file: ${error.message}`;
-                button.textContent = '🗑️ Xóa';
-                button.disabled = false;
-            });
-
-        } else {
-            alert('Mật khẩu không đúng. Xóa file thất bại.');
-        }
+        storage.deleteFile(APPWRITE_BUCKET_ID, fileId).then(function (response) {
+            statusText.textContent = `Đã xóa file "${fileName}" thành công!`;
+            allAudioFiles = allAudioFiles.filter(file => file.$id !== fileId);
+            applyFiltersAndRender();
+        }, function (error) {
+            statusText.textContent = `Lỗi khi xóa file: ${error.message}`;
+            button.textContent = '🗑️ Xóa';
+            button.disabled = false;
+        });
     }
 });
 
@@ -503,9 +517,18 @@ function renderInvalidFiles(invalidFiles) {
         audioElement.preload = 'none';
         audioElement.src = url;
         
+        // Xác định giới tính và ảnh tương ứng
+        let genderImage = '⚠️'; // Mặc định cho file không hợp lệ
+        const fileNameLower = file.name.toLowerCase();
+        if (fileNameLower.includes('[nam]') || fileNameLower.startsWith('nam ')) {
+            genderImage = '👨'; // Ảnh nam
+        } else if (fileNameLower.includes('[nữ]') || fileNameLower.startsWith('nữ ') || fileNameLower.startsWith('nu ')) {
+            genderImage = '👩'; // Ảnh nữ
+        }
+        
         card.innerHTML = `
             <div class="file-card-header">
-                <span class="file-icon">⚠️</span>
+                <span class="file-icon">${genderImage}</span>
                 <span class="file-name" title="${file.name}">${file.name}${durationText}</span>
             </div>
             <div class="file-card-body">
